@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Meal Macro Tracker — FitTrack</title>
+  <link rel="stylesheet" href="tracker.design.css">
+  <style>
+    /* Page specific layout */
+    .tracker-shell{max-width:1100px;margin:36px auto;padding:20px}
+    .grid{display:grid;gap:18px}
+    .grid-3{grid-template-columns:repeat(3,1fr)}
+    .grid-2{grid-template-columns:1fr 380px}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .card{padding:16px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06)}
+    .card h3{margin:0 0 8px;font-size:0.9rem;color:#cfead6}
+    .card .value{font-weight:800;font-size:1.1rem}
+    .controls{display:flex;gap:10px;align-items:center}
+    .meals-table{width:100%;border-collapse:collapse}
+    .meals-table th,.meals-table td{padding:10px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:left}
+    .meals-table th{opacity:0.8;font-size:0.85rem}
+    .small{font-size:0.85rem;color:#9fb3d0}
+    .canvas-wrap{height:140px}
+    .modal{position:fixed;inset:0;background:rgba(2,6,23,0.6);display:grid;place-items:center;padding:20px}
+    .modal-card{width:100%;max-width:520px;background:rgba(8,12,23,0.96);padding:18px;border-radius:14px;border:1px solid rgba(255,255,255,0.06)}
+    @media (max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}
+      .cards .card{min-height:88px}}
+  </style>
+</head>
+<body class="theme-dark">
+  <main class="tracker-shell">
+    <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <h1 style="margin:0">Meal Macro Tracker</h1>
+        <p class="small">Log meals, watch your macros, and hit your goals.</p>
+      </div>
+      <div class="controls">
+        <button id="dark-toggle" class="icon-button">🌙</button>
+        <button id="export-data" class="primary-button">Export Data</button>
+        <button id="import-data" class="secondary-button">Import Data</button>
+        <input id="import-file" type="file" accept="application/json" style="display:none" />
+      </div>
+    </header>
+
+    <section class="grid grid-2" style="gap:18px">
+      <div>
+        <div class="cards" id="dashboard-cards">
+          <div class="card">
+            <h3>Calories Consumed</h3>
+            <div class="value" id="cal-consumed">0 kcal</div>
+            <div class="small">Remaining <span id="cal-remaining">0</span> kcal</div>
+          </div>
+          <div class="card">
+            <h3>Protein</h3>
+            <div class="value" id="prot-consumed">0 g</div>
+            <div class="small">Remaining <span id="prot-remaining">0</span> g</div>
+          </div>
+          <div class="card">
+            <h3>Carbs</h3>
+            <div class="value" id="carb-consumed">0 g</div>
+            <div class="small">Remaining <span id="carb-remaining">0</span> g</div>
+          </div>
+          <div class="card">
+            <h3>Fats</h3>
+            <div class="value" id="fat-consumed">0 g</div>
+            <div class="small">Remaining <span id="fat-remaining">0</span> g</div>
+          </div>
+        </div>
+
+        <section style="margin-top:14px" class="card">
+          <h3>Daily Goals</h3>
+          <form id="goals-form" class="goals-form" novalidate style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+            <label>Calories<input id="goal-cal" type="number" min="0" required></label>
+            <label>Protein (g)<input id="goal-prot" type="number" min="0" required></label>
+            <label>Carbs (g)<input id="goal-carb" type="number" min="0" required></label>
+            <label>Fats (g)<input id="goal-fat" type="number" min="0" required></label>
+            <div style="grid-column:1 / -1;display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+              <button type="submit" class="primary-button">Save Goals</button>
+              <button type="button" id="reset-goals" class="secondary-button">Reset</button>
+            </div>
+          </form>
+        </section>
+
+        <section style="margin-top:14px" class="card">
+          <h3>Meal Entry</h3>
+          <form id="meal-form" novalidate style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+            <label>Meal name<input id="meal-name" required></label>
+
+            <label style="grid-column:1 / -1;display:flex;gap:10px;align-items:center">
+              <input id="meal-per-serving" type="checkbox" />
+              <span class="small">Log by Per Serving</span>
+            </label>
+
+            <label>Calories<input id="meal-cal" type="number" min="0" required></label>
+            <label>Protein (g)<input id="meal-prot" type="number" min="0" required></label>
+            <label>Carbs (g)<input id="meal-carb" type="number" min="0" required></label>
+            <label>Fat (g)<input id="meal-fat" type="number" min="0" required></label>
+
+            <label>Servings eaten<input id="meal-servings" type="number" min="0.01" step="0.01" value="1"></label>
+            <label>Notes<textarea id="meal-notes" rows="2" style="resize:vertical;min-height:44px" placeholder="Optional notes"></textarea></label>
+
+            <div style="grid-column:1 / -1;display:flex;gap:8px;justify-content:flex-end">
+              <button type="submit" class="primary-button">Add Meal</button>
+              <button type="button" id="clear-meals" class="secondary-button">Clear All Meals</button>
+            </div>
+          </form>
+
+        </section>
+
+      </div>
+
+      <aside>
+        <div class="card">
+          <h3>Macro Progress</h3>
+          <div class="canvas-wrap" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px">
+            <div><canvas id="cal-chart"></canvas></div>
+            <div><canvas id="prot-chart"></canvas></div>
+            <div><canvas id="carb-chart"></canvas></div>
+            <div><canvas id="fat-chart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h3>Stats</h3>
+          <p class="small">Meals logged: <strong id="stat-meals">0</strong></p>
+          <p class="small">Avg calories / meal: <strong id="stat-avg">0</strong> kcal</p>
+          <p class="small">Total calories today: <strong id="stat-total">0</strong> kcal</p>
+        </div>
+      </aside>
+    </section>
+
+    <section style="margin-top:18px" class="card">
+      <h3>Meals</h3>
+      <table class="meals-table">
+        <thead><tr><th>Meal</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fats</th><th>Time</th><th></th></tr></thead>
+        <tbody id="meals-body"></tbody>
+      </table>
+    </section>
+
+    <div id="edit-modal" class="modal" style="display:none">
+      <div class="modal-card">
+        <h3>Edit Meal</h3>
+        <form id="edit-form" novalidate style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+          <input type="hidden" id="edit-id">
+          <label>Meal name<input id="edit-name" required></label>
+
+          <label style="grid-column:1 / -1;display:flex;gap:10px;align-items:center">
+            <input id="edit-per-serving" type="checkbox" />
+            <span class="small">Log by Per Serving</span>
+          </label>
+
+          <label>Calories<input id="edit-cal" type="number" min="0" required></label>
+          <label>Protein (g)<input id="edit-prot" type="number" min="0" required></label>
+          <label>Carbs (g)<input id="edit-carb" type="number" min="0" required></label>
+          <label>Fat (g)<input id="edit-fat" type="number" min="0" required></label>
+
+          <label>Servings eaten<input id="edit-servings" type="number" min="0.01" step="0.01" value="1"></label>
+          <label>Notes<textarea id="edit-notes" rows="2" style="resize:vertical;min-height:44px" placeholder="Optional notes"></textarea></label>
+
+          <div style="grid-column:1 / -1;display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+            <button type="submit" class="primary-button">Save</button>
+            <button type="button" id="edit-cancel" class="secondary-button">Cancel</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script type="module" src="meal-tracker.js"></script>
+</body>
+</html>
